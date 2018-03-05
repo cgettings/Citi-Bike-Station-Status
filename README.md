@@ -6,4 +6,4 @@ Code and data for a [Shiny app](https://chrisgettings.shinyapps.io/Citibike_stat
 
 ## Static station map
 
-In [plots](https://github.com/cgettings/Citi-Bike-Station-Status/tree/master/plots) folder.
+In [plots](https://github.com/cgettings/Citi-Bike-Station-Status-and-Info/tree/master/plots) folder.
