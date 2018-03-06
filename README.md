@@ -6,4 +6,6 @@ Code and data for a [Shiny app](https://chrisgettings.shinyapps.io/Citibike_stat
 
 ## Static station map
 
-In [plots](https://github.com/cgettings/Citi-Bike-Station-Status-and-Info/tree/master/plots) folder.
+**Highlighting the top-10 stations**
+
+<img src="plots/top-10-stations.png" width="710" height="1200" />
