@@ -2,9 +2,35 @@
 
 ## Data archive
 
-Historical data available in [data/monthly_csv](data/monthly_csv). Data were downloadced from the Citi Bike GBFS feed's [`station_status` endpoint](https://gbfs.citibikenyc.com/gbfs/en/station_status.json). The files also include data downloaded from a Google Drive archive created by Justin Tyndall, which is available [here](https://drive.google.com/drive/u/0/folders/1aLRu3GYHTVFG9BBxPUQM4N7xhbZNMxPV). The data is organized into monthly BZip archives.
+Historical data available in [data/monthly_csv](data/monthly_csv). Data were downloadced from the Citi Bike GBFS feed's [`station_status` endpoint](https://gbfs.citibikenyc.com/gbfs/en/station_status.json). The files also include data downloaded from a Google Drive archive created by Justin Tyndall, which is available [here](https://drive.google.com/drive/u/0/folders/1aLRu3GYHTVFG9BBxPUQM4N7xhbZNMxPV). I renamed some fields, and added some extra ones; data cleaning code is available in [code/station_status_database.R](code/station_status_database.R). The data is organized into monthly BZip archives, exported by [code/station_status_monthly.R](code/station_status_monthly.R).
 
-TODO: Add details re: data format
+### Data fields
+
+|field                |example_value    |
+|:--------------------|:----------------|
+|last_reported        |1638334946       |
+|num_docks_disabled   |0                |
+|num_bikes_available  |17               |
+|is_renting           |1                |
+|station_status       |active           |
+|station_id           |72               |
+|is_returning         |1                |
+|is_installed         |1                |
+|num_bikes_disabled   |3                |
+|num_ebikes_available |2                |
+|num_docks_available  |35               |
+|date                 |18962            |
+|year                 |2021             |
+|month                |12               |
+|day                  |1                |
+|hour                 |0                |
+|minute               |2                |
+|station_latitude     |40.76727         |
+|station_longitude    |-73.99393        |
+|station_name         |W 52 St & 11 Ave |
+
+
+This example data is also available at [data/example_data.csv](data/example_data.csv).
 
 ## Shiny map
 
