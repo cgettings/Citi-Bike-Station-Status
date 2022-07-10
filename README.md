@@ -29,7 +29,6 @@ Historical data available in [data/monthly_csv](data/monthly_csv). Data were dow
 |station_longitude    |-73.99393        |
 |station_name         |W 52 St & 11 Ave |
 
-
 This example data is also available at [data/example_data.csv](data/example_data.csv).
 
 ## Shiny map
