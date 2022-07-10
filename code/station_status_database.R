@@ -321,7 +321,7 @@ repeat {
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
     cat("- - - - - - - - - - - - - - - - - - - - -\n")
-    cat(nrow(station_status), "rows added")
+    cat(format(nrow(station_status), big.mark = ","), "rows added")
     cat("\n")
     
     
