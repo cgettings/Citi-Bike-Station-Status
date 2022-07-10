@@ -1,0 +1,2 @@
+last_reported,num_docks_disabled,num_bikes_available,is_renting,station_status,station_id,is_returning,is_installed,num_bikes_disabled,num_ebikes_available,num_docks_available,date,year,month,day,hour,minute,station_latitude,station_longitude,station_name
+1638334946,0,17,1,active,72,1,1,3,2,35,18962,2021,12,1,0,2,40.76727216,-73.99392888,W 52 St & 11 Ave
