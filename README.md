@@ -4,6 +4,8 @@
 
 Historical data available in [data/monthly_csv](data/monthly_csv). Data were downloadced from the Citi Bike GBFS feed's [`station_status` endpoint](https://gbfs.citibikenyc.com/gbfs/en/station_status.json). The files also include data downloaded from a Google Drive archive created by Justin Tyndall, which is available [here](https://drive.google.com/drive/u/0/folders/1aLRu3GYHTVFG9BBxPUQM4N7xhbZNMxPV). I renamed some fields, and added some extra ones; data cleaning code is available in [code/station_status_database.R](code/station_status_database.R). The data is organized into monthly BZip archives, exported by [code/station_status_monthly.R](code/station_status_monthly.R).
 
+Station information is available at the [`station_information` endpoint](https://gbfs.citibikenyc.com/gbfs/en/station_information.json).
+
 ### Data fields
 
 |field                |example_value    |
