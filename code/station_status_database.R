@@ -72,22 +72,22 @@ station_list <-
 # Connecting to database
 #-----------------------------------------------------------------------------------------#
 
-citibike_trip_db <- dbConnect(SQLite(), here("data/citibike_trip_db.sqlite3"))
+station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
 
 #-----------------------------------------------------------------------------------------#
 # Getting date of most recent data
 #-----------------------------------------------------------------------------------------#
 
-database_has_station_status <- citibike_trip_db %>% dbExistsTable("station_status")
+database_has_station_status <- station_status_db %>% dbExistsTable("station_status")
 
 if (database_has_station_status) {
     
     query <- 
         sql(
             glue(
-                "SELECT `year`, `month`, `day`",
-                "FROM `station_status`",
-                "ORDER BY `year` DESC, `month` DESC, `day` DESC",
+                "SELECT last_reported",
+                "FROM station_status",
+                "ORDER BY last_reported DESC",
                 .sep = " "
             )
         )
@@ -97,9 +97,9 @@ if (database_has_station_status) {
     #-----------------------------------------------------------------------------------------#
     
     most_recent_day <- 
-        citibike_trip_db %>% 
+        station_status_db %>% 
         db_collect(query, n = 1) %>% 
-        mutate(date = make_date(year, month, day)) %>% 
+        mutate(date = last_reported %>% as_datetime() %>% as_date()) %>% 
         pull(date)
     
 } else {
@@ -260,12 +260,8 @@ repeat {
                 station_id   = as.integer(station_id),
                 
                 last_reported = as_datetime(last_reported, tz = "US/Eastern"),
-                date          = as_date(last_reported)     %>% as.integer(),
                 year          = last_reported %>% year()   %>% as.integer(),
-                month         = last_reported %>% month()  %>% as.integer(),
-                day           = last_reported %>% day()    %>% as.integer(),
-                hour          = last_reported %>% hour()   %>% as.integer(),
-                minute        = last_reported %>% minute() %>% as.integer()
+                month         = last_reported %>% month()  %>% as.integer()
                 
             ) %>% 
             
@@ -294,7 +290,7 @@ repeat {
         # tryCatch({
         
         dbWriteTable(
-            citibike_trip_db,
+            station_status_db,
             "station_status",
             value = station_status,
             append = TRUE,
@@ -306,7 +302,7 @@ repeat {
         # error = function(e) {
         #     
         #     db_insert_or_ignore(
-        #         conn = citibike_trip_db,
+        #         conn = station_status_db,
         #         name = "station_status",
         #         value = station_status
         #     )
@@ -336,7 +332,7 @@ repeat {
 
 stopCluster(cl)
 
-dbDisconnect(citibike_trip_db)
+dbDisconnect(station_status_db)
 
 #-----------------------------------------------------------------------------------------#
 # Cleaning up raw files ----
@@ -378,14 +374,14 @@ file_delete(station_status_files_to_add$file_list)
 # Connecting to database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-citibike_trip_db <- dbConnect(SQLite(), here("data/citibike_trip_db.sqlite3"))
+station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # listing indexes
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 index_tbl <- 
-    citibike_trip_db %>% 
+    station_status_db %>% 
     dbGetQuery(
         "SELECT * FROM sqlite_master WHERE type = 'index'"
     ) %>% 
@@ -394,33 +390,33 @@ index_tbl <-
 
 if (all(index_tbl$tbl_name != "station_status")) {
     
-    citibike_trip_db %>% db_create_index("station_status", "station_id")
-    citibike_trip_db %>% db_create_index("station_status", "last_reported")
+    station_status_db %>% db_create_index("station_status", "station_id")
+    station_status_db %>% db_create_index("station_status", "last_reported")
     
-    citibike_trip_db %>% 
+    station_status_db %>% 
         db_create_index(
             "station_status", 
             c("station_id", "last_reported")
         )
     
-    citibike_trip_db %>% db_create_index("station_status", "date")
-    citibike_trip_db %>% db_create_index("station_status", "year")
-    citibike_trip_db %>% db_create_index("station_status", "month")
-    citibike_trip_db %>% db_create_index("station_status", "day")
-    citibike_trip_db %>% db_create_index("station_status", "hour")
-    citibike_trip_db %>% db_create_index("station_status", "minute")
+    station_status_db %>% db_create_index("station_status", "date")
+    station_status_db %>% db_create_index("station_status", "year")
+    station_status_db %>% db_create_index("station_status", "month")
+    station_status_db %>% db_create_index("station_status", "day")
+    station_status_db %>% db_create_index("station_status", "hour")
+    station_status_db %>% db_create_index("station_status", "minute")
     
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     # vacuuming
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
-    citibike_trip_db %>% dbExecute("VACUUM")
+    station_status_db %>% dbExecute("VACUUM")
     
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     # checking indexes
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
-    citibike_trip_db %>% 
+    station_status_db %>% 
         dbGetQuery(
             "SELECT * FROM sqlite_master WHERE type = 'index'"
         ) %>% 
@@ -432,7 +428,7 @@ if (all(index_tbl$tbl_name != "station_status")) {
 # disconnecting from database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-dbDisconnect(citibike_trip_db)
+dbDisconnect(station_status_db)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

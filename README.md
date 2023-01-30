@@ -19,15 +19,8 @@ Historical data available in [data/monthly_csv](data/monthly_csv). Data were dow
 |num_bikes_disabled   |3                |
 |num_ebikes_available |2                |
 |num_docks_available  |35               |
-|date                 |18962            |
 |year                 |2021             |
 |month                |12               |
-|day                  |1                |
-|hour                 |0                |
-|minute               |2                |
-|station_latitude     |40.76727         |
-|station_longitude    |-73.99393        |
-|station_name         |W 52 St & 11 Ave |
 
 This example data is also available at [data/example_data.csv](data/example_data.csv).
 

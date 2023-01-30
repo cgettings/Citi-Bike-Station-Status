@@ -32,13 +32,13 @@ suppressPackageStartupMessages(library(doParallel))
 # Connecting to database
 #-----------------------------------------------------------------------------------------#
 
-citibike_trip_db <- dbConnect(SQLite(), here("data/citibike_trip_db.sqlite3"))
+station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
 
 #-----------------------------------------------------------------------------------------#
 # Listing existing monthly files
 #-----------------------------------------------------------------------------------------#
 
-local_dir <- here("data/station_status/monthly_csv")
+local_dir <- here("data/monthly_csv")
 
 file_list <- 
     dir_info(local_dir,
@@ -46,6 +46,8 @@ file_list <-
              regexp = "[.]bz2") %>%
     arrange(path) %>%
     pull(path)
+
+file_names <- character()
 
 file_names <- 
     file_list %>%
@@ -55,11 +57,19 @@ file_names <-
 
 # latest existing monthly file
 
-max_file_date <- 
-    file_names %>% 
-    str_extract("(\\d{4}-\\d{2})") %>% 
-    parse_date("%Y-%m") %>% 
-    max()
+if (length(file_names) > 0) {
+    
+    max_file_date <- 
+        file_names %>% 
+        str_extract("(\\d{4}-\\d{2})") %>% 
+        parse_date("%Y-%m") %>% 
+        max()
+    
+} else {
+    
+    max_file_date <- as_datetime("1900-01-01")
+    
+}
 
 
 #-----------------------------------------------------------------------------------------#
@@ -67,9 +77,9 @@ max_file_date <-
 #-----------------------------------------------------------------------------------------#
 
 year_month <- 
-    citibike_trip_db %>%
+    station_status_db %>%
     tbl("station_status") %>%
-    filter(date >= !!as.integer(max_file_date + months(1))) %>% 
+    filter(last_reported >= !!as.numeric(max_file_date + months(1))) %>% 
     select(year, month) %>% 
     collect() %>% 
     distinct() %>% 
@@ -102,14 +112,14 @@ foreach(
     
 ) %dopar% {
     
-    citibike_trip_db <- dbConnect(SQLite(), here("data/citibike_trip_db.sqlite3"))
+    station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
     
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     # pulling months
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
     station_status <- 
-        citibike_trip_db %>%
+        station_status_db %>%
         tbl("station_status") %>%
         filter(year == !!year_month$year[i], month == !!year_month$month[i]) %>% 
         collect()
@@ -122,7 +132,7 @@ foreach(
         bzfile(
             here(
                 str_c(
-                    "data/station_status/monthly_csv/",
+                    "data/monthly_csv/",
                     "station_status_", year_month$year[i], "-", sprintf("%02.f", year_month$month[i]), ".csv.bz2"
                 )
             ),
@@ -133,7 +143,7 @@ foreach(
     write_csv(station_status, con)
     close(con)
     
-    dbDisconnect(citibike_trip_db)
+    dbDisconnect(station_status_db)
 }
 
 
