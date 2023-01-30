@@ -113,7 +113,7 @@ if (database_has_station_status) {
 # Listing raw data files
 #-----------------------------------------------------------------------------------------#
 
-local_dir <- here("data/station_status/raw")
+local_dir <- here("data/raw")
 
 file_list <- 
     dir_info(local_dir,
@@ -396,15 +396,13 @@ if (all(index_tbl$tbl_name != "station_status")) {
     station_status_db %>% 
         db_create_index(
             "station_status", 
-            c("station_id", "last_reported")
+            c("station_id", "last_reported"),
+            unique = FALSE
         )
     
-    station_status_db %>% db_create_index("station_status", "date")
     station_status_db %>% db_create_index("station_status", "year")
     station_status_db %>% db_create_index("station_status", "month")
     station_status_db %>% db_create_index("station_status", "day")
-    station_status_db %>% db_create_index("station_status", "hour")
-    station_status_db %>% db_create_index("station_status", "minute")
     
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     # vacuuming
