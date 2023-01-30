@@ -4,5 +4,7 @@
 .Ruserdata
 *.sqlite3
 data/monthly_csv_orig
+data/raw
+data/downloaded_station_status.zip
 code/station_status_with_weather.R
 code/station_status_db_new.R
