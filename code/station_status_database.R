@@ -29,6 +29,7 @@ library(foreach)
 library(doParallel)
 library(tictoc)
 library(zip)
+library(dtplyr)
 
 #-----------------------------------------------------------------------------------------#
 # Loading custom functions
@@ -169,7 +170,7 @@ chunk_size <- 24000
 start      <- 1
 end        <- chunk_size
 
-# iterating through list of files, in 1000 file chunks, until there are no more files
+# iterating through list of files, in 24000 file chunks, until there are no more files
 
 repeat {
     
@@ -253,7 +254,7 @@ repeat {
             
             station_status_parsed %>% 
             
-            as_tibble() %>% 
+            lazy_dt() %>% 
             
             mutate(
                 
@@ -271,8 +272,8 @@ repeat {
             
             distinct(station_id, last_reported, .keep_all = TRUE) %>% 
             
-            left_join(., station_list, by = "station_id")
-        
+            as_tibble()
+            
         
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
         # Print some pretty details of your progress
@@ -342,10 +343,10 @@ dbDisconnect(station_status_db)
 # adding to archive
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-if (file_exists(here("data/station_status/raw/added_raw_files.zip"))) {
+if (file_exists(here("data/raw/added_raw_files_3.zip"))) {
     
     zipr_append(
-        zipfile = here("data/station_status/raw/added_raw_files.zip"), 
+        zipfile = here("data/raw/added_raw_files_3.zip"), 
         files = station_status_files_to_add$file_list,
         compression_level = 4
     )
@@ -353,7 +354,7 @@ if (file_exists(here("data/station_status/raw/added_raw_files.zip"))) {
 } else {
     
     zipr(
-        zipfile = here("data/station_status/raw/added_raw_files.zip"), 
+        zipfile = here("data/raw/added_raw_files_3.zip"), 
         files = station_status_files_to_add$file_list,
         compression_level = 4
     )

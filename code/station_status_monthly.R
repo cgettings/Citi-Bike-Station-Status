@@ -79,10 +79,11 @@ if (length(file_names) > 0) {
 year_month <- 
     station_status_db %>%
     tbl("station_status") %>%
-    filter(last_reported >= !!as.numeric(max_file_date + months(1))) %>% 
+    filter(last_reported >= !!as.numeric(as_datetime(max_file_date) + months(1))) %>% 
     select(year, month) %>% 
-    collect() %>% 
+    arrange(year, month) %>% 
     distinct() %>% 
+    collect() %>% 
     drop_na() %>% 
     slice(1:nrow(.) - 1) # dropping most recent month, because we're in it
 
