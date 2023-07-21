@@ -8,3 +8,4 @@ data/raw
 data/downloaded_station_status.zip
 code/station_status_with_weather.R
 code/station_status_db_new.R
+data/rush_hour/station_status_rush.rds
