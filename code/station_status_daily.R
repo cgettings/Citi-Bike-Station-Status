@@ -32,18 +32,20 @@ suppressPackageStartupMessages(library(doParallel))
 # Connecting to database
 #-----------------------------------------------------------------------------------------#
 
-station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
+station_status_db <- dbConnect(SQLite(), here("data/station_status_db_new.sqlite3"))
 
 #-----------------------------------------------------------------------------------------#
 # Listing existing monthly files
 #-----------------------------------------------------------------------------------------#
 
-local_dir <- here("data/monthly_csv")
+local_dir <- here("data/daily_csv")
 
 file_list <- 
-    dir_info(local_dir,
-             recurse = FALSE,
-             regexp = "[.]bz2") %>%
+    dir_info(
+        local_dir,
+        recurse = FALSE,
+        regexp = "[.]bz2"
+    ) %>%
     arrange(path) %>%
     pull(path)
 
@@ -67,7 +69,7 @@ if (length(file_names) > 0) {
     
 } else {
     
-    max_file_date <- as_datetime("1900-01-01")
+    max_file_date <- as_date("1900-01-01")
     
 }
 
@@ -76,44 +78,33 @@ if (length(file_names) > 0) {
 # month x year combos not in file list
 #-----------------------------------------------------------------------------------------#
 
-year_month <- 
+all_dates <- 
     station_status_db %>%
     tbl("station_status") %>%
-    filter(last_reported >= !!as.numeric(as_datetime(max_file_date) + months(1))) %>% 
-    select(year, month) %>% 
-    arrange(year, month) %>% 
+    select(date) %>% 
+    arrange(date) %>% 
+    filter(date >= {{ max_file_date }}) %>% 
     distinct() %>% 
     collect() %>% 
-    drop_na() %>% 
-    slice(1:nrow(.) - 1) # dropping most recent month, because we're in it
+    drop_na() 
 
 
 #=========================================================================================#
 # pulling months ----
 #=========================================================================================#
 
-if (nrow(year_month) < 4) {
-    
-    n_processes <- nrow(year_month)
-    
-} else {
-    
-    n_processes <- 4
-    
-}
-
-cl <- makePSOCKcluster(n_processes)
+cl <- makePSOCKcluster(4)
 registerDoParallel(cl)
 
 foreach(
-    i = 1:nrow(year_month),
+    i = 1:nrow(all_dates),
     .errorhandling = "pass",
     .inorder = FALSE,
-    .packages = c("tidyverse", "fs", "here", "glue", "DBI", "RSQLite")
+    .packages = c("dplyr", "stringr", "readr", "fs", "here", "glue", "DBI", "RSQLite")
     
 ) %dopar% {
     
-    station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
+    station_status_db <- dbConnect(SQLite(), here("data/station_status_db_new.sqlite3"))
     
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     # pulling months
@@ -122,7 +113,8 @@ foreach(
     station_status <- 
         station_status_db %>%
         tbl("station_status") %>%
-        filter(year == !!year_month$year[i], month == !!year_month$month[i]) %>% 
+        filter(date == {{ all_dates$date[i] }}) %>% 
+        select(-station_status, -legacy_id) %>% 
         collect()
     
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -131,12 +123,7 @@ foreach(
     
     con <- 
         bzfile(
-            here(
-                str_c(
-                    "data/monthly_csv/",
-                    "station_status_", year_month$year[i], "-", sprintf("%02.f", year_month$month[i]), ".csv.bz2"
-                )
-            ),
+            here(glue("data/daily_csv/station_status_{all_dates$date[i]}.csv.bz2")),
             open = "wb",
             compression = 4
         )
