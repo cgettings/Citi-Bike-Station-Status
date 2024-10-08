@@ -7,5 +7,10 @@ data/monthly_csv_orig
 data/raw
 data/downloaded_station_status.zip
 code/station_status_with_weather.R
-code/station_status_db_new.R
+code/station_status_db.R
 data/rush_hour/station_status_rush.rds
+code/checking both servers.R
+code/exploring columns over time.R
+code/uncompress archive.R
+code/upating IDs in database.R
+code/update database with new station_id.R
