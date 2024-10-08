@@ -1,7 +1,7 @@
 ###########################################################################################-
 ###########################################################################################-
 ##
-## Station status text files to database ----
+## Station status text files to database: NYC ----
 ##
 ###########################################################################################-
 ###########################################################################################-
@@ -36,15 +36,6 @@ library(dtplyr)
 #-----------------------------------------------------------------------------------------#
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# dbWriteTable, but with "IGNORE" option
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-
-# copied from: https://gist.github.com/jeffwong/5925000
-
-# source(here("code/functions/db_insert_or_ignore.R"))
-
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # make `fromJSON()` robust to errors (e.g., empty files)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
@@ -53,21 +44,6 @@ fromJSON_possibly <-
         fromJSON,
         otherwise = tibble()
     )
-
-#-----------------------------------------------------------------------------------------#
-# Getting current station list
-#-----------------------------------------------------------------------------------------#
-
-station_list <- 
-    fromJSON("https://gbfs.citibikenyc.com/gbfs/en/station_information.json")$data$stations %>% 
-    as_tibble() %>% 
-    select(
-        station_id, 
-        station_latitude = lat, 
-        station_longitude = lon, 
-        station_name = name
-    ) %>% 
-    mutate(station_id = as.integer(station_id))
 
 #-----------------------------------------------------------------------------------------#
 # Connecting to database
@@ -117,9 +93,11 @@ if (database_has_station_status) {
 local_dir <- here("data/raw")
 
 file_list <- 
-    dir_info(local_dir,
-             recurse = FALSE,
-             regexp = "[.]json") %>%
+    dir_info(
+        local_dir,
+        recurse = FALSE,
+        regexp = "[.]json"
+    ) %>%
     arrange(path) %>%
     pull(path)
 
@@ -135,9 +113,11 @@ file_dates <-
     as_date()
 
 station_status_files <- 
-    tibble(file_list,
-           file_names,
-           file_dates) %>%
+    tibble(
+        file_list,
+        file_names,
+        file_dates
+    ) %>%
     arrange(desc(file_dates))
 
 
@@ -149,7 +129,7 @@ station_status_files <-
 
 station_status_files_to_add <- 
     station_status_files %>% 
-    filter(file_dates > most_recent_day) %>% 
+    filter(file_dates >= most_recent_day) %>% 
     arrange(file_dates)
 
 
@@ -164,9 +144,17 @@ registerDoParallel(cl)
 # Cleaning
 #-----------------------------------------------------------------------------------------#
 
+# station info for legacy_id
+
+station_information <- 
+    station_status_db %>% 
+    tbl("station_information") %>% 
+    select(.station_id = station_id, .legacy_id = legacy_id) %>% 
+    collect()
+
 # setting initial values of range
 
-chunk_size <- 24000
+chunk_size <- 16000
 start      <- 1
 end        <- chunk_size
 
@@ -206,7 +194,7 @@ repeat {
             .multicombine = TRUE,
             .errorhandling = "pass",
             .inorder = FALSE,
-            .packages = c("tidyverse", "jsonlite", "fs", "data.table")
+            .packages = c("dplyr", "jsonlite", "fs", "data.table")
             
         ) %dopar% {
             
@@ -222,7 +210,8 @@ repeat {
                         vars(
                             -matches("rental_access_method"),
                             -matches("eightd"),
-                            -matches("legacy_id")
+                            -matches("num_scooters_unavailable"),
+                            -matches("num_scooters_available"),
                         )
                     ) %>% 
                     as.data.table()
@@ -236,7 +225,8 @@ repeat {
                         vars(
                             -matches("rental_access_method"),
                             -matches("eightd"),
-                            -matches("legacy_id")
+                            -matches("num_scooters_unavailable"),
+                            -matches("num_scooters_available"),
                         )
                     ) %>% 
                     as.data.table()
@@ -250,19 +240,63 @@ repeat {
     
     if (nrow(station_status_parsed) > 0) {
         
+        # if no legacy_id, add it
+        
+        if (!"legacy_id" %in% colnames(station_status_parsed)) {
+            
+            station_status_parsed <- station_status_parsed %>% mutate(legacy_id = NA_character_)
+            
+        }
+        
+        
         station_status <- 
             
             station_status_parsed %>% 
             
             lazy_dt() %>% 
             
+            left_join(
+                .,
+                station_information,
+                by = c("station_id" = ".legacy_id"),
+                relationship = "many-to-many"
+            ) %>% 
+            
             mutate(
                 
-                station_id   = as.integer(station_id),
+                station_id  = as.character(station_id),
+                legacy_id   = as.character(legacy_id),
                 
-                last_reported = as_datetime(last_reported, tz = "US/Eastern"),
-                year          = last_reported %>% year()   %>% as.integer(),
-                month         = last_reported %>% month()  %>% as.integer()
+                date = last_reported %>% as_date(tz = "America/New_York") %>% as.character(),
+                
+                # clean legacy_id and station_id
+                
+                legacy_id = 
+                    if_else(
+                        station_id != .station_id, 
+                        station_id, 
+                        legacy_id
+                    ),
+                station_id_2 = 
+                    if_else(
+                        station_id != .station_id,
+                        .station_id,
+                        station_id
+                    ),
+                station_id = 
+                    if_else(
+                        is.na(station_id_2),
+                        station_id,
+                        station_id_2
+                    ),
+                legacy_id = 
+                    if_else(
+                        is.na(legacy_id),
+                        station_id,
+                        legacy_id
+                    ),
+                
+                last_reported = as_datetime(last_reported, tz = "America/New_York")
                 
             ) %>% 
             
@@ -272,7 +306,14 @@ repeat {
             
             distinct(station_id, last_reported, .keep_all = TRUE) %>% 
             
+            select(-.station_id, -station_id_2) %>%
+            
             as_tibble()
+        
+        
+        # free some memory
+        
+        invisible(gc(verbose = FALSE))
             
         
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -288,8 +329,6 @@ repeat {
         # writing to database
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
         
-        # tryCatch({
-        
         dbWriteTable(
             station_status_db,
             "station_status",
@@ -297,18 +336,6 @@ repeat {
             append = TRUE,
             temporary = FALSE
         )
-        
-        # },
-        
-        # error = function(e) {
-        #     
-        #     db_insert_or_ignore(
-        #         conn = station_status_db,
-        #         name = "station_status",
-        #         value = station_status
-        #     )
-        
-        # })
         
     }
     
@@ -331,9 +358,12 @@ repeat {
     
 }
 
+# clean up
+
 stopCluster(cl)
 
 dbDisconnect(station_status_db)
+
 
 #-----------------------------------------------------------------------------------------#
 # Cleaning up raw files ----
@@ -343,10 +373,10 @@ dbDisconnect(station_status_db)
 # adding to archive
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-if (file_exists(here("data/raw/added_raw_files_3.zip"))) {
+if (file_exists(here("data/raw/added_raw_files_all.zip"))) {
     
     zipr_append(
-        zipfile = here("data/raw/added_raw_files_3.zip"), 
+        zipfile = here("data/raw/added_raw_files_all.zip"), 
         files = station_status_files_to_add$file_list,
         compression_level = 4
     )
@@ -354,7 +384,7 @@ if (file_exists(here("data/raw/added_raw_files_3.zip"))) {
 } else {
     
     zipr(
-        zipfile = here("data/raw/added_raw_files_3.zip"), 
+        zipfile = here("data/raw/added_raw_files_all.zip"), 
         files = station_status_files_to_add$file_list,
         compression_level = 4
     )
@@ -392,6 +422,7 @@ index_tbl <-
 if (all(index_tbl$tbl_name != "station_status")) {
     
     station_status_db %>% db_create_index("station_status", "station_id")
+    station_status_db %>% db_create_index("station_status", "date")
     station_status_db %>% db_create_index("station_status", "last_reported")
     
     station_status_db %>% 
@@ -401,9 +432,6 @@ if (all(index_tbl$tbl_name != "station_status")) {
             unique = FALSE
         )
     
-    station_status_db %>% db_create_index("station_status", "year")
-    station_status_db %>% db_create_index("station_status", "month")
-    station_status_db %>% db_create_index("station_status", "day")
     
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     # vacuuming
