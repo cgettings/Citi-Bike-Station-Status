@@ -25,7 +25,7 @@ library(dbplyr)
 # Connecting to database ----
 #-----------------------------------------------------------------------------------------#
 
-station_status_db <- dbConnect(SQLite(), here("data/station_status_db_new.sqlite3"))
+station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # make `fromJSON()` robust to errors (e.g., empty files)
@@ -199,7 +199,7 @@ dbWriteTable(
 # Connecting to database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-station_status_db <- dbConnect(SQLite(), here("data/station_status_db_new.sqlite3"))
+station_status_db <- dbConnect(SQLite(), here("data/station_status_db.sqlite3"))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # listing indexes
